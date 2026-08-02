@@ -1,0 +1,7 @@
+#screen dim
+WIDTH = 800
+HEIGHT = 800
+
+COLS = 8
+ROWS = 8
+SQSize = WIDTH//COLS
