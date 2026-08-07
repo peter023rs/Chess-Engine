@@ -8,16 +8,38 @@ class Board:
 
     def __init__(self):
         self.squares = [[0,0,0,0,0,0,0,0] for col in range(COLS)]
-
+        self.last_move = None
         self._create()
         self._add_pieces('white')
         self._add_pieces('black')
 
+    def move(self, piece, move):
+        initial = move.initial
+        final = move.final
+
+        #console board move update
+        self.squares[initial.row][initial.col].piece = None
+        self.squares[final.row][final.col].piece = piece
+
+        #move
+        piece.moved = True
+
+        #clear valid moves
+        piece.clear_moves()
+
+        #set last move
+        self.last_move = move
+
+    def valid_move(self, piece, move):
+        return move in piece.moves
 
     def calc_moves(self, piece, row, col):
         '''
-            Calculate all the possible (valid) moves of an specific piece on a specific position        
+            Calculate all the possible (valid) moves of an specific piece on a specific position
         '''
+
+        #start from a clean list, otherwise moves stack up on every click
+        piece.clear_moves()
 
         def knight_moves():
             #8possible moves
@@ -123,7 +145,7 @@ class Board:
                 possible_moves_row, possible_moves_col = possible_move
 
                 if Square.in_range(possible_moves_row, possible_moves_col):
-                    if self.squares[possible_moves_row][possible_moves_col].isempty_or_enemy(piece.color):
+                    if self.squares[possible_moves_row][possible_moves_col].isempty_or_rival(piece.color):
                         initial = Square(row, col)
                         final = Square(possible_moves_row,possible_moves_col)
                         move = Move(initial,final)
