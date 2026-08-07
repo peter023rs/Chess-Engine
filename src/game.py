@@ -2,6 +2,7 @@ import pygame
 from const import *
 from board import Board
 from dragger import Dragger
+from config import Config
 
 
 class Game():
@@ -11,17 +12,18 @@ class Game():
         self.hovered_sqr = None
         self.dragger = Dragger()
         self.next_player = 'white'
+        self.config = Config()
 
     def show_bg(self, surface):
+        theme = self.config.theme
+
         for row in range(ROWS):
             for col in range(COLS):
-                if (row+col) % 2 == 0:
-                    color = (234,235,200) #light green
-                else:
-                    color = (119,154,88) #dark green
-
+                #color
+                color = theme.bg.light if (row+col)%2 == 0 else theme.bg.dark
+                #rect
                 rect = (col*SQSize, row*SQSize, SQSize,SQSize)
-
+                #blit
                 pygame.draw.rect(surface,color,rect)
 
 
@@ -41,13 +43,15 @@ class Game():
                         surface.blit(img, piece.texture_rect)
 
     def show_moves(self, surface):
+        theme= self.config.theme
+
         if self.dragger.dragging:
             piece = self.dragger.piece
 
             #loop all valid moves
             for move in piece.moves:
                 #color
-                color = '#C86464' if (move.final.row + move.final.col) %2 == 0 else '#C84646'
+                color = theme.move.light if (move.final.row + move.final.col) %2 == 0 else theme.move.dark
                 #rect
                 rect = (move.final.col*SQSize, move.final.row*SQSize, SQSize, SQSize)
                 #blit
@@ -55,13 +59,15 @@ class Game():
 
 
     def show_last_move(self, surface):
+        theme = self.config.theme
+
         if self.board.last_move:
             initial = self.board.last_move.initial
             final = self.board.last_move.final
 
             for pos in [initial, final]:
                 #color
-                color = (244,247,116) if (pos.row+pos.col)%2 == 0 else (172,195,51)
+                color = theme.trace.light if (pos.row+pos.col)%2 == 0 else theme.trace.dark
                 #rect
                 rect = (pos.col*SQSize, pos.row*SQSize, SQSize,SQSize)
                 #blit
@@ -82,4 +88,16 @@ class Game():
 
     def set_hover(self, row, col):
         self.hovered_sqr = self.board.squares[row][col]
+
+    def change_theme(self):
+        self.config.change_theme()
+
+    def play_sound(self, captured = False):
+        if captured:
+            self.config.capture_sound.play()
+        else:
+            self.config.move_sound.play()
+
+    def reset(self):
+        self.__init__()
 
