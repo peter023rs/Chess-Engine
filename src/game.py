@@ -3,9 +3,13 @@ from const import *
 from board import Board
 from dragger import Dragger
 from config import Config
+from piece import Queen, Rook, Bishop, Knight
 
 
 class Game():
+
+    #order the promotion picker is drawn in
+    PROMOTIONS = ['queen', 'rook', 'bishop', 'knight']
 
     def __init__(self):
         self.board = Board()
@@ -13,6 +17,12 @@ class Game():
         self.dragger = Dragger()
         self.next_player = 'white'
         self.config = Config()
+        #(piece, row, col) of a piece clicked but not yet given a destination
+        self.selected = None
+        #(row, col, color) while the player is choosing a promotion piece
+        self.promotion = None
+        #'checkmate', 'stalemate' or None
+        self.game_over = None
 
     def show_bg(self, surface):
         theme = self.config.theme
@@ -45,17 +55,28 @@ class Game():
     def show_moves(self, surface):
         theme= self.config.theme
 
+        #a piece being dragged and a piece sitting selected both show their moves
         if self.dragger.dragging:
             piece = self.dragger.piece
+        elif self.selected:
+            piece = self.selected[0]
+        else:
+            return
 
-            #loop all valid moves
-            for move in piece.moves:
-                #color
-                color = theme.move.light if (move.final.row + move.final.col) %2 == 0 else theme.move.dark
-                #rect
-                rect = (move.final.col*SQSize, move.final.row*SQSize, SQSize, SQSize)
-                #blit
-                pygame.draw.rect(surface, color, rect)
+        #mark the square the selected piece is waiting on
+        if self.selected:
+            row, col = self.selected[1], self.selected[2]
+            color = theme.trace.light if (row+col) %2 == 0 else theme.trace.dark
+            pygame.draw.rect(surface, color, (col*SQSize, row*SQSize, SQSize, SQSize))
+
+        #loop all valid moves
+        for move in piece.moves:
+            #color
+            color = theme.move.light if (move.final.row + move.final.col) %2 == 0 else theme.move.dark
+            #rect
+            rect = (move.final.col*SQSize, move.final.row*SQSize, SQSize, SQSize)
+            #blit
+            pygame.draw.rect(surface, color, rect)
 
 
     def show_last_move(self, surface):
@@ -81,7 +102,64 @@ class Game():
             #blit
             pygame.draw.rect(surface, color, rect,width=3)
                 
+    def show_promotion(self, surface):
+        if not self.promotion:
+            return
+
+        color = self.promotion[2]
+        classes = [Queen, Rook, Bishop, Knight]
+
+        for i, (row, col) in enumerate(self.promotion_squares()):
+            rect = (col*SQSize, row*SQSize, SQSize, SQSize)
+            pygame.draw.rect(surface, (245,245,245), rect)
+            pygame.draw.rect(surface, (40,40,40), rect, width=2)
+
+            piece = classes[i](color)
+            piece.set_texture(size=80)
+            img = pygame.image.load(piece.texture)
+            center = col*SQSize + SQSize//2, row*SQSize + SQSize//2
+            surface.blit(img, img.get_rect(center=center))
+
+    def show_game_over(self, surface):
+        if not self.game_over:
+            return
+
+        if self.game_over == 'checkmate':
+            #next_player is the side that has been mated
+            winner = 'Black' if self.next_player == 'white' else 'White'
+            text = f'Checkmate - {winner} wins'
+        else:
+            text = 'Stalemate - draw'
+
+        label = self.config.font.render(text, True, (255,255,255))
+        hint = self.config.small_font.render('press r to play again', True, (200,200,200))
+        label_rect = label.get_rect(center=(WIDTH//2, HEIGHT//2 - 14))
+        hint_rect = hint.get_rect(center=(WIDTH//2, HEIGHT//2 + 26))
+
+        box = label_rect.union(hint_rect).inflate(60, 44)
+        overlay = pygame.Surface(box.size, pygame.SRCALPHA)
+        overlay.fill((0,0,0,210))
+        surface.blit(overlay, box.topleft)
+        surface.blit(label, label_rect)
+        surface.blit(hint, hint_rect)
+
     #other methods
+
+    def promotion_squares(self):
+        '''the four squares the picker covers, first option on the promotion square'''
+        row, col, color = self.promotion
+        step = 1 if color == 'white' else -1
+        return [(row + step*i, col) for i in range(4)]
+
+    def promotion_choice(self, row, col):
+        '''which piece a click landed on, or None if it missed the picker'''
+        for i, square in enumerate(self.promotion_squares()):
+            if square == (row, col):
+                return self.PROMOTIONS[i]
+        return None
+
+    def check_game_over(self):
+        self.game_over = self.board.game_over(self.next_player)
 
     def next_turn(self):
         self.next_player = 'white' if self.next_player == 'black' else 'black'
